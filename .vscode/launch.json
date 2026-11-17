@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Audiblez: Assembly & Metadata",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/audiblez/cli.py",
+            "args": [
+                "~/Downloads/book/How_Large_Language_Models_Work.epub",
+                "-v", "af_heart",
+                "-o", "~/Downloads/book/output"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        }
+    ]
+}
