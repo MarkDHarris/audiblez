@@ -365,7 +365,7 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
         *cover_image_args,  # Cover image (if provided)
 
         '-map', '0:a',  # Map audio
-        '-c:a', 'aac',  # Convert to AAC
+        '-c:a', 'copy', # Copy existing AAC output from concat_wavs_with_ffmpeg
         '-b:a', '64k',  # Reduce bitrate for smaller size
 
         '-map_metadata', '1', # Map metadata
@@ -390,11 +390,26 @@ def create_index_file(title, creator, chapter_mp3_files, output_folder):
     with open(Path(output_folder) / "chapters.txt", "w", encoding="utf-8") as f:
         f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
         start = 0
-        i = 0
+        i = 1
         for c in chapter_mp3_files:
             duration = probe_duration(c)
-            end = start + (int)(duration * 1000)
-            f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle=Chapter {i}\n\n")
+            end = start + int(duration * 1000)
+
+            # Check if an object title was explicitly attached;
+            # otherwise clean up the filename stem for a readable name
+            if hasattr(c, 'title'):
+                chapter_title = c.title
+            else:
+                stem = Path(c).stem
+                # Extracts the trailing section identifier (e.g. "chapter-1" from "...Text_chapter-1.html")
+                match = re.search(r'Text_(.+?)(?:\.html)?$', stem)
+                if match:
+                    raw_name = match.group(1).replace('-', ' ').replace('_', ' ').title()
+                    chapter_title = raw_name
+                else:
+                    chapter_title = f"Chapter {i}"
+
+            f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle={chapter_title}\n\n")
             i += 1
             start = end
 
