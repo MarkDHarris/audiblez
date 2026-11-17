@@ -7,9 +7,23 @@
             "request": "launch",
             "program": "${workspaceFolder}/audiblez/cli.py",
             "args": [
-                "~/Downloads/book/How_Large_Language_Models_Work.epub",
+                "${env:HOME}/Downloads/book/How_Large_Language_Models_Work.epub",
                 "-v", "af_heart",
-                "-o", "~/Downloads/book/output"
+                "-o", "${env:HOME}/Downloads/book/output"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug Narrate: Markdown to Audio",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/narrate.py",
+            "args": [
+                "${workspaceFolder}/draft.md",
+                "-v", "af_heart",
+                "-o", "${workspaceFolder}/draft.m4a"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": false,

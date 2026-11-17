@@ -12,5 +12,6 @@ chapters.txt
 *.onnx
 dist
 .venv
+*.m4a
 
 !.vscode/launch.json
