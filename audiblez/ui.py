@@ -32,9 +32,12 @@ border = 5
 
 class MainWindow(wx.Frame):
     def __init__(self, parent, title):
-        screen_width, screen_h = wx.GetDisplaySize()
-        self.window_width = int(screen_width * 0.6)
-        super().__init__(parent, title=title, size=(self.window_width, self.window_width * 3 // 4))
+        # Define the window dimensions and attach to self
+        self.window_width = 1000
+        self.window_height = 700
+        super().__init__(parent, title=title, size=(self.window_width, self.window_height))
+        self.SetMinSize((900, 800))
+
         self.chapters_panel = None
         self.preview_threads = []
         self.selected_chapter = None
@@ -49,9 +52,16 @@ class MainWindow(wx.Frame):
 
         self.create_menu()
         self.create_layout()
-        self.Centre()
+
+        self.CentreOnScreen(wx.BOTH)
         self.Show(True)
-        if Path('../epub/lewis.epub').exists(): self.open_epub('../epub/lewis.epub')
+
+        # Prompt the user to select an EPUB on startup
+        wx.CallAfter(self.on_open, None)
+
+        # target_book = Path('./How_Large_Language_Models_Work.epub')
+        # if target_book.exists():
+        #     self.open_epub(str(target_book.resolve()))
 
     def create_menu(self):
         menubar = wx.MenuBar()
