@@ -154,7 +154,9 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             chapter_wav_files.remove(chapter_wav_path)
 
     if has_ffmpeg:
-        create_index_file(title, creator, chapter_wav_files, output_folder)
+        chapter_titles = [getattr(c, 'title', None) or f"Chapter {idx}" 
+                          for idx, c in enumerate(selected_chapters, start=1)]
+        create_index_file(title, creator, chapter_wav_files, output_folder, chapter_titles=chapter_titles)
         create_m4b(chapter_wav_files, filename, cover_image, output_folder)
         if post_event: post_event('CORE_FINISHED')
 
@@ -258,6 +260,16 @@ def find_document_chapters_and_extract_texts(book):
             continue
         xml = chapter.get_body_content()
         soup = BeautifulSoup(xml, features='lxml')
+
+        # --- EXTRACT REAL TITLE ---
+        # Look for the first h1, h2, or title tag in this document
+        heading_tag = soup.find(['h1', 'h2', 'title'])
+        if heading_tag and heading_tag.text.strip():
+            # Clean up newlines or excessive whitespace
+            chapter.title = " ".join(heading_tag.text.strip().split())
+        else:
+            chapter.title = None
+        
         chapter.extracted_text = ''
         html_content_tags = ['title', 'p', 'h1', 'h2', 'h3', 'h4', 'li']
         for text in [c.text.strip() for c in soup.find_all(html_content_tags) if c.text]:
@@ -385,31 +397,45 @@ def probe_duration(file_name):
     proc = subprocess.run(args, capture_output=True, text=True, check=True)
     return float(proc.stdout.strip())
 
+def format_chapter_title(raw_title: str, fallback_index: int) -> str:
+    if not raw_title:
+        return f"Chapter {fallback_index}"
 
-def create_index_file(title, creator, chapter_mp3_files, output_folder):
+    clean = " ".join(raw_title.strip().split())
+    match = re.match(r'^(?:Chapter\s*)?(\d+)[\s.:\-–—]*(.*)$', clean, flags=re.IGNORECASE)
+    if match:
+        num = match.group(1)
+        name = match.group(2).strip()
+        return f"Chapter {num} – {name}" if name else f"Chapter {num}"
+
+    return clean
+
+
+def sanitize_metadata_title(title: str) -> str:
+    if not title:
+        return ""
+    clean = " ".join(title.strip().split())
+    clean = clean.replace('\\', r'\\').replace('=', r'\=').replace(';', r'\;').replace('#', r'\#')
+    return clean
+
+
+def create_index_file(title, creator, chapter_mp3_files, output_folder, chapter_titles=None):
     with open(Path(output_folder) / "chapters.txt", "w", encoding="utf-8") as f:
-        f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
+        clean_book_title = sanitize_metadata_title(title)
+        clean_creator = sanitize_metadata_title(creator)
+        f.write(f";FFMETADATA1\ntitle={clean_book_title}\nartist={clean_creator}\n\n")
+
         start = 0
         i = 1
-        for c in chapter_mp3_files:
+        for idx, c in enumerate(chapter_mp3_files):
             duration = probe_duration(c)
             end = start + int(duration * 1000)
 
-            # Check if an object title was explicitly attached;
-            # otherwise clean up the filename stem for a readable name
-            if hasattr(c, 'title'):
-                chapter_title = c.title
-            else:
-                stem = Path(c).stem
-                # Extracts the trailing section identifier (e.g. "chapter-1" from "...Text_chapter-1.html")
-                match = re.search(r'Text_(.+?)(?:\.html)?$', stem)
-                if match:
-                    raw_name = match.group(1).replace('-', ' ').replace('_', ' ').title()
-                    chapter_title = raw_name
-                else:
-                    chapter_title = f"Chapter {i}"
+            raw = chapter_titles[idx] if (chapter_titles and idx < len(chapter_titles)) else None
+            formatted = format_chapter_title(raw, fallback_index=i)
+            clean_title = sanitize_metadata_title(formatted)
 
-            f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle={chapter_title}\n\n")
+            f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle={clean_title}\n\n")
             i += 1
             start = end
 
